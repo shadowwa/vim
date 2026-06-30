@@ -5758,6 +5758,59 @@ func Test_popup_opacity_only_cterm_or_gui_set()
   call StopVimInTerminal(buf)
 endfunc
 
+" it seems that the term_dumpwrite use vterm that does not understand colored
+" underline, curly or double
+func Test_popup_opacity_colored_underline()
+  CheckScreendump
+
+  let lines =<< trim END
+  " is that necessary?
+  let &t_AU = "\e[58:5:%dm"           "underline color (ANSI)
+  highlight GuiOnly                                gui=underline guisp=cyan
+  highlight CtermOnly cterm=underline ctermul=cyan
+  highlight GuiCterm  cterm=underline ctermul=cyan gui=underline guisp=cyan
+  call matchadd('GuiOnly', 'guionly')
+  call matchadd('CtermOnly', 'ctermonly')
+  call matchadd('GuiCterm', 'guicterm')
+  call setline(1, repeat(['guionly ctermonly guicterm'], 14))
+  call popup_create('right right right', #{
+        \ line: 2, col: 3,
+        \ border: [1, 1, 1, 1],
+        \ padding: [1, 1, 1 ,1],
+        \ minwidth: 20,
+        \ minheight: 2,
+        \ opacity: 70,
+        \ highlights: 'Normal:Normal',
+        \ })
+  call popup_create('right right right', #{
+        \ line: 8, col: 3,
+        \ border: [1, 1, 1, 1],
+        \ padding: [1, 1, 1 ,1],
+        \ minwidth: 20,
+        \ minheight: 2,
+        \ opacity: 70,
+        \ })
+  END
+  call writefile(lines, 'XtestPopupOpacityColoredUnderline', 'D')
+  let buf = RunVimInTerminal('-S XtestPopupOpacityColoredUnderline', #{rows: 13, cols: 60})
+  " light notermguicolors
+  call VerifyScreenDump(buf, 'Test_popup_opacity_colored_underline_1', {})
+
+  " light termguicolors
+  call term_sendkeys(buf, ":set termguicolors\<CR>")
+  call VerifyScreenDump(buf, 'Test_popup_opacity_colored_underline_3', {})
+
+  " dark termguicolors
+  call term_sendkeys(buf, ":set background=dark\<CR>")
+  call VerifyScreenDump(buf, 'Test_popup_opacity_colored_underline_4', {})
+
+  " date notermguicolors
+  call term_sendkeys(buf, ":set notermguicolors\<CR>")
+  call VerifyScreenDump(buf, 'Test_popup_opacity_colored_underline_5', {})
+
+  call StopVimInTerminal(buf)
+endfunc
+
 func Test_popup_opacity_attr()
   CheckScreendump
 

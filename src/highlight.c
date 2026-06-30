@@ -3462,6 +3462,11 @@ hl_blend_attr(int char_attr, int popup_attr, int blend, int blend_fg UNUSED)
 		    new_en.ae_u.gui.fg_color = blend_colors(
 			    popup_bg_rgb, base_fg, blend);
 		}
+		// blend underlying colored underline if set
+		if (char_aep != NULL
+			&& char_aep->ae_u.gui.sp_color != INVALCOLOR)
+		    new_en.ae_u.gui.sp_color = blend_colors(
+			    popup_bg_rgb, char_aep->ae_u.gui.sp_color, blend);
 	    }
 	    else
 	    {
@@ -3583,6 +3588,33 @@ hl_blend_attr(int char_attr, int popup_attr, int blend, int blend_fg UNUSED)
 		new_en.ae_u.cterm.fg_color = blend_cterm_colors(
 			popup_aep->ae_u.cterm.fg_color, popup_bg_rgb,
 			under_fg, under_fg_rgb, fallback_fg_rgb, blend);
+		// if not guarded here, mess test where term_dumpwrite use new_en.ae_u.cterm.ul_color as new_en.ae_attr
+		// ie if blended color == 2 => text in dump become bold
+		if (new_en.ae_attr & HL_UNDERLINE) {
+		    // blend cterm underlying colored underline if set
+		    int under_ul = (char_aep != NULL)
+			? char_aep->ae_u.cterm.ul_color : 0;
+		    guicolor_T under_ul_rgb = INVALCOLOR;
+#ifdef FEAT_TERMGUICOLORS
+		    if (char_aep != NULL)
+			under_ul_rgb = char_aep->ae_u.cterm.ul_rgb;
+#endif
+		    new_en.ae_u.cterm.ul_color = blend_cterm_colors(
+			    popup_aep->ae_u.cterm.bg_color, popup_bg_rgb,
+			    under_ul, under_ul_rgb, fallback_fg_rgb, blend);
+		// use of ul_color here seems to modify randomly color or bgcolor in tests
+		/* new_en.ae_u.cterm.ul_color = blend_cterm_colors( */
+		/* 	popup_aep->ae_u.cterm.fg_color, popup_bg_rgb, */
+		/* 	under_fg, under_fg_rgb, fallback_fg_rgb, blend); */
+		// TODO if the new_en.ae_u.cterm.ul_color is fixed here, use of ul_color as 
+		// 0 -> ok
+		// 1 -> whiteish on blackish
+		// 2 -> flag bold	HL_BOLD 0x02
+		// 3 -> ok
+		// 4 -> flag italic	HL_ITALIC 0x04
+		// 8 -> flag reverse    HL_INVERSE 0x08
+		new_en.ae_u.cterm.ul_color = 4;
+		}
 	    }
 	    // Approximate cterm bg by blending with the underlying bg
 	    // in the 256-color palette and mapping to the nearest entry.
@@ -3624,6 +3656,12 @@ hl_blend_attr(int char_attr, int popup_attr, int blend, int blend_fg UNUSED)
 			    base_fg = char_aep->ae_u.cterm.fg_rgb;
 			new_en.ae_u.cterm.fg_rgb = blend_colors(
 				popup_bg_rgb, base_fg, blend);
+			// blend rgb underlying colored underline if set
+			if (char_aep != NULL
+				&& !COLOR_INVALID(char_aep->ae_u.cterm.ul_rgb))
+			    new_en.ae_u.cterm.ul_rgb = blend_colors(
+				    popup_bg_rgb, char_aep->ae_u.cterm.ul_rgb,
+				    blend);
 		    }
 		}
 		else
@@ -3735,6 +3773,11 @@ hl_pum_blend_attr(int char_attr, int popup_attr, int blend UNUSED)
 		new_en.ae_u.gui.fg_color = blend_colors(
 			popup_bg_rgb, base_fg, blend);
 	    }
+	    // blend underlying colored underline if set
+	    if (char_aep != NULL
+		    && char_aep->ae_u.gui.sp_color != INVALCOLOR)
+		new_en.ae_u.gui.sp_color = blend_colors(
+			popup_bg_rgb, char_aep->ae_u.gui.sp_color, blend);
 	    // Blend background color: blend popup bg toward underlying bg
 	    {
 		guicolor_T underlying_bg = fallback_bg_rgb;
@@ -3818,6 +3861,19 @@ hl_pum_blend_attr(int char_attr, int popup_attr, int blend UNUSED)
 			popup_aep->ae_u.cterm.fg_color, popup_bg_rgb,
 			under_fg, under_fg_rgb, fallback_fg_rgb, blend);
 	    }
+	    // blend cterm underlying colored underline if set
+	    {
+		int under_ul = (char_aep != NULL)
+		    ? char_aep->ae_u.cterm.ul_color : 0;
+		guicolor_T under_ul_rgb = INVALCOLOR;
+#ifdef FEAT_TERMGUICOLORS
+		if (char_aep != NULL)
+		    under_ul_rgb = char_aep->ae_u.cterm.ul_rgb;
+#endif
+		new_en.ae_u.cterm.ul_color = blend_cterm_colors(
+			popup_aep->ae_u.cterm.bg_color, popup_bg_rgb,
+			under_ul, under_ul_rgb, fallback_fg_rgb, blend);
+	    }
 	    // Approximate cterm bg by blending with the underlying bg
 	    // in the 256-color palette and mapping to the nearest entry.
 	    {
@@ -3847,6 +3903,12 @@ hl_pum_blend_attr(int char_attr, int popup_attr, int blend UNUSED)
 		    base_fg = char_aep->ae_u.cterm.fg_rgb;
 		new_en.ae_u.cterm.fg_rgb = blend_colors(
 			popup_bg_rgb, base_fg, blend);
+		// blend rgb underlying colored underline if set
+		if (char_aep != NULL
+			&& !COLOR_INVALID(char_aep->ae_u.cterm.ul_rgb))
+		    new_en.ae_u.cterm.ul_rgb = blend_colors(
+			    popup_bg_rgb, char_aep->ae_u.cterm.ul_rgb,
+			    blend);
 	    }
 	    if (popup_bg_rgb != INVALCOLOR)
 	    {
